@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>8-Puzzle Solver</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0d0d0f;
+      --surface: #16161a;
+      --surface2: #1e1e24;
+      --border: #2a2a35;
+      --accent: #7c6af7;
+      --accent2: #f7c26a;
+      --text: #e8e8f0;
+      --muted: #6b6b80;
+      --success: #6af7a0;
+      --danger: #f76a6a;
+      --tile-bg: #1e1e2e;
+      --tile-hover: #252535;
+      --tile-border: #3a3a55;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 16px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+
+    header h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -1px;
+    }
+
+    header p {
+      color: var(--muted);
+      font-size: 0.82rem;
+      margin-top: 6px;
+    }
+
+    .main-layout {
+      display: flex;
+      gap: 32px;
+      flex-wrap: wrap;
+      justify-content: center;
+      width: 100%;
+      max-width: 900px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+    }
+
+    .left-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      flex: 0 0 auto;
+    }
+
+    .right-panel {
+      flex: 1;
+      min-width: 280px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* --- PUZZLE GRID --- */
+    .puzzle-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      width: 240px;
+      height: 240px;
+    }
+
+    .tile {
+      background: var(--tile-bg);
+      border: 2px solid var(--tile-border);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Syne', sans-serif;
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      user-select: none;
+      position: relative;
+    }
+
+    .tile:hover:not(.blank) {
+      background: var(--tile-hover);
+      border-color: var(--accent);
+      transform: scale(1.04);
+    }
+
+    .tile.blank {
+      background: transparent;
+      border: 2px dashed var(--border);
+      cursor: default;
+    }
+
+    .tile.animating {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+      transform: scale(1.06);
+    }
+
+    .tile.goal {
+      border-color: var(--success);
+      color: var(--success);
+    }
+
+    /* --- BUTTONS --- */
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    button {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 10px 18px;
+      border-radius: 8px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+    .btn-primary:hover { opacity: 0.85; transform: translateY(-1px); }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--text);
+      border-color: var(--border);
+    }
+    .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--danger);
+      border-color: var(--danger);
+    }
+    .btn-danger:hover { background: var(--danger); color: #fff; }
+
+    /* --- STATS --- */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .stat-box {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      text-align: center;
+    }
+
+    .stat-label {
+      font-size: 0.65rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .stat-value {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: var(--accent2);
+      margin-top: 4px;
+    }
+
+    /* --- STATUS MESSAGE --- */
+    .status-msg {
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 0.78rem;
+      line-height: 1.5;
+      display: none;
+    }
+
+    .status-msg.show { display: block; }
+    .status-msg.info { background: rgba(124,106,247,0.12); border: 1px solid var(--accent); color: var(--accent); }
+    .status-msg.success { background: rgba(106,247,160,0.10); border: 1px solid var(--success); color: var(--success); }
+    .status-msg.error { background: rgba(247,106,106,0.10); border: 1px solid var(--danger); color: var(--danger); }
+
+    /* --- MOVE LOG --- */
+    .move-log-wrap {
+      flex: 1;
+    }
+
+    .move-log-title {
+      font-size: 0.72rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+    }
+
+    .move-log {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      max-height: 180px;
+      overflow-y: auto;
+      font-size: 0.72rem;
+      color: var(--muted);
+      line-height: 1.8;
+    }
+
+    .move-log::-webkit-scrollbar { width: 4px; }
+    .move-log::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .move-entry {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .move-num {
+      color: var(--accent);
+      font-weight: 700;
+      min-width: 28px;
+    }
+
+    .move-dir {
+      color: var(--text);
+    }
+
+    /* --- SPEED CONTROL --- */
+    .speed-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+
+    input[type="range"] {
+      flex: 1;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    /* --- ALGO BADGE --- */
+    .algo-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      background: rgba(124,106,247,0.15);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      font-size: 0.7rem;
+      text-align: center;
+    }
+
+    .section-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 14px;
+    }
+
+    /* --- GOAL PREVIEW --- */
+    .goal-preview {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 3px;
+      width: 72px;
+    }
+
+    .gp-tile {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.55rem;
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    .gp-tile.blank-gp { background: transparent; border-color: transparent; }
+
+    .goal-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+
+    /* Confetti particle */
+    .confetti-particle {
+      position: fixed;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      pointer-events: none;
+      animation: fall 1.5s ease-in forwards;
+      z-index: 999;
+    }
+
+    @keyframes fall {
+      0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+    }
+
+    @media (max-width: 600px) {
+      .puzzle-grid { width: 210px; height: 210px; }
+      .tile { font-size: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>8-Puzzle Solver</h1>
+    <p>Click tiles to move them &bull; Press Solve to watch BFS find the solution</p>
+  </header>
+
+  <div class="main-layout">
+
+    <!-- LEFT: Puzzle board -->
+    <div class="left-panel card">
+      <div class="goal-row">
+        <span>Goal:</span>
+        <div class="goal-preview" id="goalPreview"></div>
+      </div>
+
+      <div class="puzzle-grid" id="puzzleGrid"></div>
+
+      <div class="algo-badge" id="algoBadge">Algorithm: Breadth-First Search (BFS)</div>
+
+      <div class="btn-row">
+        <button class="btn-primary" id="solveBtn" onclick="startSolve()">▶ Solve</button>
+        <button class="btn-secondary" onclick="randomPuzzle()">⟳ Random</button>
+        <button class="btn-secondary" onclick="resetPuzzle()">↺ Reset</button>
+      </div>
+
+      <div class="speed-row">
+        <span>Speed:</span>
+        <input type="range" id="speedSlider" min="50" max="800" value="400" step="50">
+        <span id="speedLabel">400ms</span>
+      </div>
+    </div>
+
+    <!-- RIGHT: Stats + log -->
+    <div class="right-panel">
+
+      <div class="card">
+        <div class="section-title">Stats</div>
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-label">Moves to Solve</div>
+            <div class="stat-value" id="statMoves">—</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">States Explored</div>
+            <div class="stat-value" id="statSteps">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div id="statusMsg" class="status-msg"></div>
+      </div>
+
+      <div class="card move-log-wrap">
+        <div class="move-log-title">Move Log</div>
+        <div class="move-log" id="moveLog">
+          <span style="color:var(--muted)">No solution yet...</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // ========================================
+    // STATE
+    // ========================================
+    let currentState = [1, 2, 3, 4, 5, 6, 7, 8, 0]; // default: already solved-ish
+    let solution = [];
+    let isAnimating = false;
+    let animationTimer = null;
+
+    const GOAL = [1, 2, 3, 4, 5, 6, 7, 8, 0];
+
+    // ========================================
+    // INIT
+    // ========================================
+    document.addEventListener("DOMContentLoaded", () => {
+      buildGoalPreview();
+      randomPuzzle();
+
+      document.getElementById("speedSlider").addEventListener("input", function() {
+        document.getElementById("speedLabel").textContent = this.value + "ms";
+      });
+    });
+
+    function buildGoalPreview() {
+      const gp = document.getElementById("goalPreview");
+      gp.innerHTML = "";
+      GOAL.forEach(n => {
+        const d = document.createElement("div");
+        d.className = n === 0 ? "gp-tile blank-gp" : "gp-tile";
+        d.textContent = n === 0 ? "" : n;
+        gp.appendChild(d);
+      });
+    }
+
+    // ========================================
+    // RENDER PUZZLE
+    // ========================================
+    function renderPuzzle(state, highlightIndex = -1) {
+      const grid = document.getElementById("puzzleGrid");
+      grid.innerHTML = "";
+
+      const isGoal = state.every((v, i) => v === GOAL[i]);
+
+      state.forEach((num, idx) => {
+        const tile = document.createElement("div");
+        tile.className = "tile";
+
+        if (num === 0) {
+          tile.classList.add("blank");
+        } else {
+          tile.textContent = num;
+          if (isGoal) tile.classList.add("goal");
+          if (idx === highlightIndex) tile.classList.add("animating");
+          tile.onclick = () => tryManualMove(idx);
+        }
+
+        grid.appendChild(tile);
+      });
+    }
+
+    // ========================================
+    // MANUAL TILE CLICKING
+    // ========================================
+    function tryManualMove(tileIndex) {
+      if (isAnimating) return;
+
+      const blankIndex = currentState.indexOf(0);
+      const row = i => Math.floor(i / 3);
+      const col = i => i % 3;
+
+      const dr = Math.abs(row(tileIndex) - row(blankIndex));
+      const dc = Math.abs(col(tileIndex) - col(blankIndex));
+
+      // Only allow adjacent tiles (not diagonal)
+      if ((dr === 1 && dc === 0) || (dr === 0 && dc === 1)) {
+        const newState = [...currentState];
+        [newState[blankIndex], newState[tileIndex]] = [newState[tileIndex], newState[blankIndex]];
+        currentState = newState;
+        renderPuzzle(currentState);
+        checkManualSolve();
+      }
+    }
+
+    function checkManualSolve() {
+      if (currentState.every((v, i) => v === GOAL[i])) {
+        showStatus("🎉 You solved it manually!", "success");
+        celebrate();
+      }
+    }
+
+    // ========================================
+    // RANDOM PUZZLE
+    // ========================================
+    async function randomPuzzle() {
+      stopAnimation();
+      clearStats();
+      clearMoveLog();
+
+      try {
+        const res = await fetch("/random");
+        const data = await res.json();
+        currentState = data.state;
+        renderPuzzle(currentState);
+        showStatus("New puzzle loaded. Press ▶ Solve to see BFS in action!", "info");
+      } catch {
+        showStatus("Could not connect to server. Is Flask running?", "error");
+      }
+    }
+
+    // ========================================
+    // RESET
+    // ========================================
+    function resetPuzzle() {
+      stopAnimation();
+      clearStats();
+      clearMoveLog();
+      renderPuzzle(currentState);
+      showStatus("Animation reset. You can Solve again.", "info");
+    }
+
+    // ========================================
+    // SOLVE WITH BFS
+    // ========================================
+    async function startSolve() {
+      if (isAnimating) return;
+      clearStats();
+      clearMoveLog();
+      showStatus("⏳ Sending to BFS solver...", "info");
+
+      document.getElementById("solveBtn").disabled = true;
+
+      try {
+        const res = await fetch("/solve", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ state: currentState })
+        });
+
+        const data = await res.json();
+
+        if (data.already_solved) {
+          showStatus("✅ Already solved!", "success");
+          document.getElementById("solveBtn").disabled = false;
+          return;
+        }
+
+        if (data.unsolvable) {
+          showStatus("❌ This puzzle has no solution! Try a different arrangement.", "error");
+          document.getElementById("solveBtn").disabled = false;
+          return;
+        }
+
+        if (data.success) {
+          document.getElementById("statMoves").textContent = data.total_moves;
+          document.getElementById("statSteps").textContent = data.steps_explored;
+
+          showStatus(
+            `BFS found the solution in <strong>${data.total_moves} moves</strong>! ` +
+            `Explored ${data.steps_explored} states. Animating...`,
+            "success"
+          );
+
+          solution = data.solution;
+          populateMoveLog(solution);
+          animateSolution(solution);
+        }
+
+      } catch (err) {
+        showStatus("Error connecting to server. Make sure Flask is running!", "error");
+        document.getElementById("solveBtn").disabled = false;
+      }
+    }
+
+    // ========================================
+    // ANIMATE SOLUTION STEP BY STEP
+    // ========================================
+    function animateSolution(steps) {
+      isAnimating = true;
+      let stepIndex = 0;
+
+      // Re-render puzzle from the START so we animate the full path
+      // The solution starts from the next state after current
+      function playStep() {
+        if (stepIndex >= steps.length) {
+          isAnimating = false;
+          document.getElementById("solveBtn").disabled = false;
+          showStatus("🎉 Solved! BFS guarantees this is the SHORTEST path.", "success");
+          celebrate();
+
+          // Highlight the active move log entry
+          highlightMoveLogEntry(stepIndex - 1);
+          return;
+        }
+
+        const { state, move } = steps[stepIndex];
+
+        // Find which tile MOVED (the one that changed from blank's old spot)
+        const blankWas = currentState.indexOf(0);
+        currentState = state;
+
+        // The tile that moved is now at blankWas position
+        renderPuzzle(currentState, blankWas);
+        highlightMoveLogEntry(stepIndex);
+
+        stepIndex++;
+        const delay = parseInt(document.getElementById("speedSlider").value);
+        animationTimer = setTimeout(playStep, delay);
+      }
+
+      playStep();
+    }
+
+    function stopAnimation() {
+      if (animationTimer) clearTimeout(animationTimer);
+      isAnimating = false;
+      document.getElementById("solveBtn").disabled = false;
+    }
+
+    // ========================================
+    // MOVE LOG
+    // ========================================
+    function populateMoveLog(steps) {
+      const log = document.getElementById("moveLog");
+      log.innerHTML = "";
+      steps.forEach((step, i) => {
+        const entry = document.createElement("div");
+        entry.className = "move-entry";
+        entry.id = `log-entry-${i}`;
+        entry.innerHTML = `
+          <span class="move-num">#${i + 1}</span>
+          <span class="move-dir">Slide ${step.move}</span>
+        `;
+        log.appendChild(entry);
+      });
+    }
+
+    function highlightMoveLogEntry(index) {
+      document.querySelectorAll(".move-entry").forEach(e => e.style.color = "");
+      const active = document.getElementById(`log-entry-${index}`);
+      if (active) {
+        active.style.color = "var(--accent2)";
+        active.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }
+
+    function clearMoveLog() {
+      document.getElementById("moveLog").innerHTML =
+        '<span style="color:var(--muted)">No solution yet...</span>';
+    }
+
+    // ========================================
+    // STATUS + STATS
+    // ========================================
+    function showStatus(msg, type) {
+      const el = document.getElementById("statusMsg");
+      el.className = `status-msg show ${type}`;
+      el.innerHTML = msg;
+    }
+
+    function clearStats() {
+      document.getElementById("statMoves").textContent = "—";
+      document.getElementById("statSteps").textContent = "—";
+    }
+
+    // ========================================
+    // CELEBRATION CONFETTI
+    // ========================================
+    function celebrate() {
+      const colors = ["#7c6af7", "#f7c26a", "#6af7a0", "#f76a6a", "#6ac8f7"];
+      for (let i = 0; i < 40; i++) {
+        setTimeout(() => {
+          const p = document.createElement("div");
+          p.className = "confetti-particle";
+          p.style.left = Math.random() * 100 + "vw";
+          p.style.top = "-10px";
+          p.style.background = colors[Math.floor(Math.random() * colors.length)];
+          p.style.animationDuration = (1 + Math.random()) + "s";
+          document.body.appendChild(p);
+          setTimeout(() => p.remove(), 2500);
+        }, i * 40);
+      }
+    }
+  </script>
+</body>
+</html>
