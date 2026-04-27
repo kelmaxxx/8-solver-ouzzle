@@ -6,11 +6,8 @@ app = Flask(__name__)
 
 
 def generate_random_puzzle():
-    """
-    Generate a random solvable 8-puzzle configuration.
-    Keep shuffling until we get one that's solvable.
-    """
-    tiles = list(range(9))  # [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    """Generate a random solvable 8-puzzle that isn't already solved."""
+    tiles = list(range(9))
     while True:
         random.shuffle(tiles)
         if is_solvable(tiles) and tuple(tiles) != tuple(GOAL_STATE):
@@ -27,7 +24,7 @@ def index():
 def solve():
     """
     Receive the puzzle from the frontend, solve it with BFS,
-    and return the solution steps as JSON.
+    and return the solution steps + all visited states as JSON.
     """
     data = request.get_json()
     start_state = data.get("state")
@@ -35,39 +32,31 @@ def solve():
     if not start_state or len(start_state) != 9:
         return jsonify({"error": "Invalid puzzle state"}), 400
 
-    # Check all numbers 0-8 are present
     if sorted(start_state) != list(range(9)):
         return jsonify({"error": "Puzzle must contain numbers 0-8"}), 400
 
-    # Check if already solved
+    # Already solved?
     if tuple(start_state) == tuple(GOAL_STATE):
         return jsonify({"already_solved": True, "steps": 0, "moves": 0})
 
-    # Check if solvable
+    # Not solvable?
     if not is_solvable(start_state):
         return jsonify({"unsolvable": True})
 
-    # Run BFS solver
-    solution_path, steps_explored = solve_bfs(start_state)
+    # Run BFS
+    solution_path, steps_explored, visited_states = solve_bfs(start_state)
 
     if solution_path is None:
         return jsonify({"unsolvable": True})
 
-    # Format the solution for the frontend
-    # Each step contains the board state and the move made
-    formatted_steps = []
-    for state, move in solution_path:
-        formatted_steps.append({
-            "state": list(state),
-            "move": move
-        })
-
     return jsonify({
-        "success": True,
-        "solution": formatted_steps,
-        "total_moves": len(solution_path),       # How many tile moves to solve
-        "steps_explored": steps_explored,         # How many states BFS visited
-        "algorithm": "Breadth-First Search (BFS)"
+        "success":         True,
+        "solution":        solution_path,               # Step-by-step solution
+        "total_moves":     len(solution_path),          # Moves in solution
+        "steps_explored":  steps_explored,              # BFS nodes processed
+        "visited_states":  [list(s) for s in visited_states],  # ALL visited states
+        "total_visited":   len(visited_states),         # Count of visited states
+        "algorithm":       "Breadth-First Search (BFS)"
     })
 
 
@@ -81,7 +70,6 @@ def random_puzzle():
 if __name__ == "__main__":
     print("=" * 50)
     print("  8-Puzzle Solver is running!")
-    print("  Open your browser and go to:")
-    print("  http://127.0.0.1:5000")
+    print("  Open your browser: http://127.0.0.1:5000")
     print("=" * 50)
     app.run(debug=True)

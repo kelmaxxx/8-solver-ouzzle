@@ -3,24 +3,23 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>8-Puzzle Solver</title>
+  <title>8-Puzzle Solver — BFS</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #0d0d0f;
-      --surface: #16161a;
-      --surface2: #1e1e24;
-      --border: #2a2a35;
-      --accent: #7c6af7;
-      --accent2: #f7c26a;
-      --text: #e8e8f0;
-      --muted: #6b6b80;
-      --success: #6af7a0;
-      --danger: #f76a6a;
-      --tile-bg: #1e1e2e;
-      --tile-hover: #252535;
-      --tile-border: #3a3a55;
+      --bg:        #0d0d0f;
+      --surface:   #16161a;
+      --surface2:  #1e1e24;
+      --border:    #2a2a35;
+      --accent:    #7c6af7;
+      --accent2:   #f7c26a;
+      --text:      #e8e8f0;
+      --muted:     #6b6b80;
+      --success:   #6af7a0;
+      --danger:    #f76a6a;
+      --visited:   #2a2a45;
+      --visited-border: #3a3a65;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -33,328 +32,285 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 32px 16px;
+      padding: 28px 16px 48px;
     }
 
     header {
       text-align: center;
-      margin-bottom: 36px;
+      margin-bottom: 28px;
     }
 
     header h1 {
       font-family: 'Syne', sans-serif;
-      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-size: clamp(1.8rem, 5vw, 3rem);
       font-weight: 800;
       background: linear-gradient(135deg, var(--accent), var(--accent2));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
-      letter-spacing: -1px;
     }
 
-    header p {
-      color: var(--muted);
-      font-size: 0.82rem;
-      margin-top: 6px;
-    }
+    header p { color: var(--muted); font-size: 0.78rem; margin-top: 6px; }
 
+    /* ── LAYOUT ── */
     .main-layout {
       display: flex;
-      gap: 32px;
+      gap: 20px;
       flex-wrap: wrap;
       justify-content: center;
       width: 100%;
-      max-width: 900px;
+      max-width: 1100px;
     }
 
     .card {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 16px;
-      padding: 24px;
+      padding: 20px;
     }
 
+    /* ── LEFT: Board ── */
     .left-panel {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 20px;
+      gap: 16px;
       flex: 0 0 auto;
     }
 
-    .right-panel {
+    /* ── MIDDLE: Stats + logs ── */
+    .mid-panel {
       flex: 1;
-      min-width: 280px;
+      min-width: 260px;
+      max-width: 320px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 14px;
     }
 
-    /* --- PUZZLE GRID --- */
+    /* ── RIGHT: Visited states ── */
+    .right-panel {
+      flex: 1;
+      min-width: 260px;
+      max-width: 360px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* ── PUZZLE GRID ── */
     .puzzle-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-      width: 240px;
-      height: 240px;
+      gap: 7px;
+      width: 234px;
+      height: 234px;
     }
 
     .tile {
-      background: var(--tile-bg);
-      border: 2px solid var(--tile-border);
+      background: #1e1e2e;
+      border: 2px solid #3a3a55;
       border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
       font-family: 'Syne', sans-serif;
-      font-size: 1.8rem;
+      font-size: 1.75rem;
       font-weight: 800;
-      color: var(--text);
       cursor: pointer;
-      transition: all 0.15s ease;
+      transition: all 0.13s ease;
       user-select: none;
-      position: relative;
     }
 
-    .tile:hover:not(.blank) {
-      background: var(--tile-hover);
-      border-color: var(--accent);
-      transform: scale(1.04);
-    }
+    .tile:hover:not(.blank) { background: #252535; border-color: var(--accent); transform: scale(1.05); }
+    .tile.blank { background: transparent; border: 2px dashed var(--border); cursor: default; }
+    .tile.animating { background: var(--accent); border-color: var(--accent); color: #fff; transform: scale(1.07); }
+    .tile.goal { border-color: var(--success); color: var(--success); }
 
-    .tile.blank {
-      background: transparent;
-      border: 2px dashed var(--border);
-      cursor: default;
-    }
-
-    .tile.animating {
-      background: var(--accent);
-      border-color: var(--accent);
-      color: #fff;
-      transform: scale(1.06);
-    }
-
-    .tile.goal {
-      border-color: var(--success);
-      color: var(--success);
-    }
-
-    /* --- BUTTONS --- */
-    .btn-row {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
+    /* ── BUTTONS ── */
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
 
     button {
       font-family: 'Space Mono', monospace;
-      font-size: 0.78rem;
+      font-size: 0.75rem;
       font-weight: 700;
-      padding: 10px 18px;
+      padding: 9px 16px;
       border-radius: 8px;
       border: 2px solid transparent;
       cursor: pointer;
-      transition: all 0.15s ease;
+      transition: all 0.13s;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.4px;
     }
 
-    .btn-primary {
-      background: var(--accent);
-      color: #fff;
-      border-color: var(--accent);
-    }
+    .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
     .btn-primary:hover { opacity: 0.85; transform: translateY(-1px); }
     .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-
-    .btn-secondary {
-      background: transparent;
-      color: var(--text);
-      border-color: var(--border);
-    }
+    .btn-secondary { background: transparent; color: var(--text); border-color: var(--border); }
     .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
 
-    .btn-danger {
-      background: transparent;
-      color: var(--danger);
-      border-color: var(--danger);
-    }
-    .btn-danger:hover { background: var(--danger); color: #fff; }
-
-    /* --- STATS --- */
-    .stats-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
+    /* ── STATS ── */
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .stats-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
 
     .stat-box {
       background: var(--surface2);
       border: 1px solid var(--border);
       border-radius: 10px;
-      padding: 14px;
+      padding: 12px 8px;
       text-align: center;
     }
 
-    .stat-label {
-      font-size: 0.65rem;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
+    .stat-label { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; }
+    .stat-value { font-family: 'Syne', sans-serif; font-size: 1.6rem; font-weight: 800; color: var(--accent2); margin-top: 3px; }
+    .stat-value.visited-count { color: #a06af7; }
 
-    .stat-value {
-      font-family: 'Syne', sans-serif;
-      font-size: 1.8rem;
-      font-weight: 800;
-      color: var(--accent2);
-      margin-top: 4px;
-    }
-
-    /* --- STATUS MESSAGE --- */
-    .status-msg {
-      padding: 12px 16px;
-      border-radius: 10px;
-      font-size: 0.78rem;
-      line-height: 1.5;
-      display: none;
-    }
-
+    /* ── STATUS ── */
+    .status-msg { padding: 10px 14px; border-radius: 10px; font-size: 0.74rem; line-height: 1.5; display: none; }
     .status-msg.show { display: block; }
-    .status-msg.info { background: rgba(124,106,247,0.12); border: 1px solid var(--accent); color: var(--accent); }
-    .status-msg.success { background: rgba(106,247,160,0.10); border: 1px solid var(--success); color: var(--success); }
-    .status-msg.error { background: rgba(247,106,106,0.10); border: 1px solid var(--danger); color: var(--danger); }
+    .status-msg.info    { background: rgba(124,106,247,.12); border: 1px solid var(--accent);   color: var(--accent); }
+    .status-msg.success { background: rgba(106,247,160,.10); border: 1px solid var(--success);  color: var(--success); }
+    .status-msg.error   { background: rgba(247,106,106,.10); border: 1px solid var(--danger);   color: var(--danger); }
 
-    /* --- MOVE LOG --- */
-    .move-log-wrap {
-      flex: 1;
-    }
-
-    .move-log-title {
-      font-size: 0.72rem;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 10px;
-    }
+    /* ── MOVE LOG ── */
+    .panel-title { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
 
     .move-log {
       background: var(--surface2);
       border: 1px solid var(--border);
       border-radius: 10px;
-      padding: 12px;
-      max-height: 180px;
+      padding: 10px;
+      max-height: 200px;
       overflow-y: auto;
-      font-size: 0.72rem;
+      font-size: 0.7rem;
       color: var(--muted);
       line-height: 1.8;
     }
 
-    .move-log::-webkit-scrollbar { width: 4px; }
-    .move-log::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .move-entry { display: flex; gap: 8px; align-items: center; }
+    .move-num { color: var(--accent); font-weight: 700; min-width: 26px; }
+    .move-dir { color: var(--text); }
+    .move-entry.active .move-dir { color: var(--accent2); }
 
-    .move-entry {
+    /* ── VISITED STATES ── */
+    .visited-section { display: flex; flex-direction: column; gap: 10px; }
+
+    .visited-controls {
       display: flex;
       gap: 8px;
       align-items: center;
+      flex-wrap: wrap;
     }
 
-    .move-num {
-      color: var(--accent);
-      font-weight: 700;
-      min-width: 28px;
-    }
-
-    .move-dir {
-      color: var(--text);
-    }
-
-    /* --- SPEED CONTROL --- */
-    .speed-row {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-size: 0.72rem;
-      color: var(--muted);
-    }
-
-    input[type="range"] {
+    .visited-search {
       flex: 1;
-      accent-color: var(--accent);
-      cursor: pointer;
-    }
-
-    /* --- ALGO BADGE --- */
-    .algo-badge {
-      display: inline-block;
-      padding: 4px 12px;
-      border-radius: 20px;
-      background: rgba(124,106,247,0.15);
-      border: 1px solid var(--accent);
-      color: var(--accent);
-      font-size: 0.7rem;
-      text-align: center;
-    }
-
-    .section-title {
-      font-family: 'Syne', sans-serif;
-      font-size: 1rem;
-      font-weight: 700;
-      color: var(--text);
-      margin-bottom: 14px;
-    }
-
-    /* --- GOAL PREVIEW --- */
-    .goal-preview {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 3px;
-      width: 72px;
-    }
-
-    .gp-tile {
       background: var(--surface2);
       border: 1px solid var(--border);
-      border-radius: 3px;
-      width: 22px;
-      height: 22px;
+      border-radius: 8px;
+      padding: 7px 10px;
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+      font-size: 0.7rem;
+      outline: none;
+      min-width: 0;
+    }
+    .visited-search:focus { border-color: var(--accent); }
+    .visited-search::placeholder { color: var(--muted); }
+
+    .visited-list {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      max-height: 440px;
+      overflow-y: auto;
       display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.55rem;
-      font-weight: 700;
-      color: var(--muted);
+      flex-direction: column;
+      gap: 6px;
     }
 
-    .gp-tile.blank-gp { background: transparent; border-color: transparent; }
+    .visited-list::-webkit-scrollbar { width: 4px; }
+    .visited-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
-    .goal-row {
+    .visited-item {
+      background: var(--visited);
+      border: 1px solid var(--visited-border);
+      border-radius: 8px;
+      padding: 8px 10px;
       display: flex;
       align-items: center;
       gap: 10px;
-      font-size: 0.7rem;
+      transition: border-color 0.15s;
+    }
+
+    .visited-item:hover { border-color: var(--accent); }
+    .visited-item.is-solution { border-color: var(--accent2); }
+    .visited-item.is-goal { border-color: var(--success); background: rgba(106,247,160,0.07); }
+    .visited-item.is-initial { border-color: var(--accent); background: rgba(124,106,247,0.08); }
+
+    .visited-num {
+      font-size: 0.6rem;
       color: var(--muted);
+      min-width: 28px;
+      text-align: right;
     }
 
-    /* Confetti particle */
-    .confetti-particle {
-      position: fixed;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      pointer-events: none;
-      animation: fall 1.5s ease-in forwards;
-      z-index: 999;
+    .mini-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+      width: 54px;
+      height: 54px;
+      flex-shrink: 0;
     }
 
-    @keyframes fall {
-      0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
-      100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+    .mini-cell {
+      background: #252535;
+      border: 1px solid #3a3a50;
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Syne', sans-serif;
+      font-size: 0.65rem;
+      font-weight: 800;
+      color: var(--text);
     }
 
-    @media (max-width: 600px) {
+    .mini-cell.blank { background: transparent; border-color: #2a2a3a; color: transparent; }
+    .mini-cell.solution-cell { background: rgba(124,106,247,0.2); color: var(--accent); }
+    .mini-cell.goal-cell { background: rgba(106,247,160,0.15); color: var(--success); }
+
+    .visited-meta { display: flex; flex-direction: column; gap: 2px; }
+    .visited-tag { font-size: 0.58rem; padding: 1px 6px; border-radius: 4px; display: inline-block; }
+    .tag-initial { background: rgba(124,106,247,.2); color: var(--accent); }
+    .tag-solution { background: rgba(247,194,106,.2); color: var(--accent2); }
+    .tag-goal { background: rgba(106,247,160,.2); color: var(--success); }
+    .visited-state-label { font-size: 0.6rem; color: var(--muted); letter-spacing: 0.5px; }
+
+    /* ── SPEED ── */
+    .speed-row { display: flex; align-items: center; gap: 10px; font-size: 0.7rem; color: var(--muted); }
+    input[type="range"] { flex: 1; accent-color: var(--accent); cursor: pointer; }
+
+    /* ── GOAL PREVIEW ── */
+    .goal-row { display: flex; align-items: center; gap: 10px; font-size: 0.7rem; color: var(--muted); }
+    .goal-preview { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; width: 66px; }
+    .gp-tile { background: var(--surface2); border: 1px solid var(--border); border-radius: 3px; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.52rem; font-weight: 700; color: var(--muted); }
+    .gp-tile.blank-gp { background: transparent; border-color: transparent; }
+
+    .algo-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; background: rgba(124,106,247,.15); border: 1px solid var(--accent); color: var(--accent); font-size: 0.68rem; text-align: center; }
+
+    /* ── SECTION TITLE ── */
+    .section-title { font-family: 'Syne', sans-serif; font-size: 0.95rem; font-weight: 700; margin-bottom: 12px; }
+
+    /* ── CONFETTI ── */
+    .confetti-particle { position: fixed; width: 8px; height: 8px; border-radius: 50%; pointer-events: none; animation: fall 1.6s ease-in forwards; z-index: 999; }
+    @keyframes fall { 0% { transform: translateY(-20px) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
+
+    .move-log::-webkit-scrollbar { width: 4px; }
+    .move-log::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    @media (max-width: 640px) {
       .puzzle-grid { width: 210px; height: 210px; }
       .tile { font-size: 1.5rem; }
     }
@@ -362,350 +318,452 @@
 </head>
 <body>
 
-  <header>
-    <h1>8-Puzzle Solver</h1>
-    <p>Click tiles to move them &bull; Press Solve to watch BFS find the solution</p>
-  </header>
+<header>
+  <h1>8-Puzzle Solver</h1>
+  <p>BFS guarantees the shortest solution &bull; All visited states are shown on the right</p>
+</header>
 
-  <div class="main-layout">
+<div class="main-layout">
 
-    <!-- LEFT: Puzzle board -->
-    <div class="left-panel card">
-      <div class="goal-row">
-        <span>Goal:</span>
-        <div class="goal-preview" id="goalPreview"></div>
-      </div>
-
-      <div class="puzzle-grid" id="puzzleGrid"></div>
-
-      <div class="algo-badge" id="algoBadge">Algorithm: Breadth-First Search (BFS)</div>
-
-      <div class="btn-row">
-        <button class="btn-primary" id="solveBtn" onclick="startSolve()">▶ Solve</button>
-        <button class="btn-secondary" onclick="randomPuzzle()">⟳ Random</button>
-        <button class="btn-secondary" onclick="resetPuzzle()">↺ Reset</button>
-      </div>
-
-      <div class="speed-row">
-        <span>Speed:</span>
-        <input type="range" id="speedSlider" min="50" max="800" value="400" step="50">
-        <span id="speedLabel">400ms</span>
-      </div>
+  <!-- ══ LEFT: BOARD ══ -->
+  <div class="left-panel card">
+    <div class="goal-row">
+      <span>Goal state:</span>
+      <div class="goal-preview" id="goalPreview"></div>
     </div>
 
-    <!-- RIGHT: Stats + log -->
-    <div class="right-panel">
+    <div class="puzzle-grid" id="puzzleGrid"></div>
 
-      <div class="card">
-        <div class="section-title">Stats</div>
-        <div class="stats-grid">
-          <div class="stat-box">
-            <div class="stat-label">Moves to Solve</div>
-            <div class="stat-value" id="statMoves">—</div>
-          </div>
-          <div class="stat-box">
-            <div class="stat-label">States Explored</div>
-            <div class="stat-value" id="statSteps">—</div>
-          </div>
-        </div>
-      </div>
+    <div class="algo-badge">Algorithm: Breadth-First Search (BFS)</div>
 
-      <div class="card">
-        <div id="statusMsg" class="status-msg"></div>
-      </div>
+    <div class="btn-row">
+      <button class="btn-primary" id="solveBtn" onclick="startSolve()">▶ Solve</button>
+      <button class="btn-secondary" onclick="randomPuzzle()">⟳ Random</button>
+      <button class="btn-secondary" onclick="resetPuzzle()">↺ Reset</button>
+    </div>
 
-      <div class="card move-log-wrap">
-        <div class="move-log-title">Move Log</div>
-        <div class="move-log" id="moveLog">
-          <span style="color:var(--muted)">No solution yet...</span>
-        </div>
-      </div>
-
+    <div class="speed-row">
+      <span>Speed:</span>
+      <input type="range" id="speedSlider" min="50" max="800" value="400" step="50">
+      <span id="speedLabel">400ms</span>
     </div>
   </div>
 
-  <script>
-    // ========================================
-    // STATE
-    // ========================================
-    let currentState = [1, 2, 3, 4, 5, 6, 7, 8, 0]; // default: already solved-ish
-    let solution = [];
-    let isAnimating = false;
-    let animationTimer = null;
+  <!-- ══ MIDDLE: STATS + LOGS ══ -->
+  <div class="mid-panel">
 
-    const GOAL = [1, 2, 3, 4, 5, 6, 7, 8, 0];
+    <div class="card">
+      <div class="section-title">Statistics</div>
+      <div class="stats-grid-3">
+        <div class="stat-box">
+          <div class="stat-label">Moves</div>
+          <div class="stat-value" id="statMoves">—</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Explored</div>
+          <div class="stat-value" id="statSteps">—</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Visited</div>
+          <div class="stat-value visited-count" id="statVisited">—</div>
+        </div>
+      </div>
+    </div>
 
-    // ========================================
-    // INIT
-    // ========================================
-    document.addEventListener("DOMContentLoaded", () => {
-      buildGoalPreview();
-      randomPuzzle();
+    <div class="card">
+      <div id="statusMsg" class="status-msg"></div>
+    </div>
 
-      document.getElementById("speedSlider").addEventListener("input", function() {
-        document.getElementById("speedLabel").textContent = this.value + "ms";
-      });
+    <div class="card" style="flex:1">
+      <div class="panel-title">Solution Path — Move Log</div>
+      <div class="move-log" id="moveLog">
+        <span style="color:var(--muted)">Press ▶ Solve to begin...</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══ RIGHT: VISITED STATES ══ -->
+  <div class="right-panel card">
+    <div class="section-title">Visited States <span style="color:var(--muted);font-size:0.7rem;font-weight:400">(Requirement #4)</span></div>
+
+    <div class="visited-section">
+      <div class="visited-controls">
+        <input class="visited-search" id="visitedSearch" type="text" placeholder="Search state e.g. 1 2 3 4 5 6 7 8 0" oninput="filterVisited()">
+      </div>
+      <div style="font-size:0.65rem;color:var(--muted)">
+        <span style="color:var(--accent)">■</span> Initial &nbsp;
+        <span style="color:var(--accent2)">■</span> On solution path &nbsp;
+        <span style="color:var(--success)">■</span> Goal
+      </div>
+      <div class="visited-list" id="visitedList">
+        <span style="color:var(--muted);font-size:0.72rem">No visited states yet. Press ▶ Solve.</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ═══════════════════════════════════
+  // STATE
+  // ═══════════════════════════════════
+  let currentState = [1,2,3,4,5,6,7,8,0];
+  let originalState = [...currentState];
+  let solution = [];
+  let allVisitedStates = [];
+  let solutionStateSet = new Set();  // states that are part of the solution path
+  let isAnimating = false;
+  let animationTimer = null;
+
+  const GOAL = [1,2,3,4,5,6,7,8,0];
+
+  // ═══════════════════════════════════
+  // INIT
+  // ═══════════════════════════════════
+  document.addEventListener("DOMContentLoaded", () => {
+    buildGoalPreview();
+    randomPuzzle();
+    document.getElementById("speedSlider").addEventListener("input", function() {
+      document.getElementById("speedLabel").textContent = this.value + "ms";
     });
+  });
 
-    function buildGoalPreview() {
-      const gp = document.getElementById("goalPreview");
-      gp.innerHTML = "";
-      GOAL.forEach(n => {
-        const d = document.createElement("div");
-        d.className = n === 0 ? "gp-tile blank-gp" : "gp-tile";
-        d.textContent = n === 0 ? "" : n;
-        gp.appendChild(d);
-      });
-    }
+  function buildGoalPreview() {
+    const gp = document.getElementById("goalPreview");
+    gp.innerHTML = "";
+    GOAL.forEach(n => {
+      const d = document.createElement("div");
+      d.className = n === 0 ? "gp-tile blank-gp" : "gp-tile";
+      d.textContent = n === 0 ? "" : n;
+      gp.appendChild(d);
+    });
+  }
 
-    // ========================================
-    // RENDER PUZZLE
-    // ========================================
-    function renderPuzzle(state, highlightIndex = -1) {
-      const grid = document.getElementById("puzzleGrid");
-      grid.innerHTML = "";
+  // ═══════════════════════════════════
+  // RENDER PUZZLE BOARD
+  // ═══════════════════════════════════
+  function renderPuzzle(state, highlightIndex = -1) {
+    const grid = document.getElementById("puzzleGrid");
+    grid.innerHTML = "";
+    const isGoal = state.every((v,i) => v === GOAL[i]);
 
-      const isGoal = state.every((v, i) => v === GOAL[i]);
-
-      state.forEach((num, idx) => {
-        const tile = document.createElement("div");
-        tile.className = "tile";
-
-        if (num === 0) {
-          tile.classList.add("blank");
-        } else {
-          tile.textContent = num;
-          if (isGoal) tile.classList.add("goal");
-          if (idx === highlightIndex) tile.classList.add("animating");
-          tile.onclick = () => tryManualMove(idx);
-        }
-
-        grid.appendChild(tile);
-      });
-    }
-
-    // ========================================
-    // MANUAL TILE CLICKING
-    // ========================================
-    function tryManualMove(tileIndex) {
-      if (isAnimating) return;
-
-      const blankIndex = currentState.indexOf(0);
-      const row = i => Math.floor(i / 3);
-      const col = i => i % 3;
-
-      const dr = Math.abs(row(tileIndex) - row(blankIndex));
-      const dc = Math.abs(col(tileIndex) - col(blankIndex));
-
-      // Only allow adjacent tiles (not diagonal)
-      if ((dr === 1 && dc === 0) || (dr === 0 && dc === 1)) {
-        const newState = [...currentState];
-        [newState[blankIndex], newState[tileIndex]] = [newState[tileIndex], newState[blankIndex]];
-        currentState = newState;
-        renderPuzzle(currentState);
-        checkManualSolve();
+    state.forEach((num, idx) => {
+      const tile = document.createElement("div");
+      tile.className = "tile";
+      if (num === 0) {
+        tile.classList.add("blank");
+      } else {
+        tile.textContent = num;
+        if (isGoal) tile.classList.add("goal");
+        if (idx === highlightIndex) tile.classList.add("animating");
+        tile.onclick = () => tryManualMove(idx);
       }
-    }
+      grid.appendChild(tile);
+    });
+  }
 
-    function checkManualSolve() {
-      if (currentState.every((v, i) => v === GOAL[i])) {
+  // ═══════════════════════════════════
+  // MANUAL TILE CLICKING
+  // ═══════════════════════════════════
+  function tryManualMove(tileIdx) {
+    if (isAnimating) return;
+    const blankIdx = currentState.indexOf(0);
+    const row = i => Math.floor(i/3), col = i => i%3;
+    const dr = Math.abs(row(tileIdx)-row(blankIdx));
+    const dc = Math.abs(col(tileIdx)-col(blankIdx));
+    if ((dr===1&&dc===0)||(dr===0&&dc===1)) {
+      const ns = [...currentState];
+      [ns[blankIdx], ns[tileIdx]] = [ns[tileIdx], ns[blankIdx]];
+      currentState = ns;
+      renderPuzzle(currentState);
+      if (currentState.every((v,i)=>v===GOAL[i])) {
         showStatus("🎉 You solved it manually!", "success");
         celebrate();
       }
     }
+  }
 
-    // ========================================
-    // RANDOM PUZZLE
-    // ========================================
-    async function randomPuzzle() {
-      stopAnimation();
-      clearStats();
-      clearMoveLog();
-
-      try {
-        const res = await fetch("/random");
-        const data = await res.json();
-        currentState = data.state;
-        renderPuzzle(currentState);
-        showStatus("New puzzle loaded. Press ▶ Solve to see BFS in action!", "info");
-      } catch {
-        showStatus("Could not connect to server. Is Flask running?", "error");
-      }
-    }
-
-    // ========================================
-    // RESET
-    // ========================================
-    function resetPuzzle() {
-      stopAnimation();
-      clearStats();
-      clearMoveLog();
+  // ═══════════════════════════════════
+  // RANDOM PUZZLE
+  // ═══════════════════════════════════
+  async function randomPuzzle() {
+    stopAnimation();
+    clearAll();
+    try {
+      const res = await fetch("/random");
+      const data = await res.json();
+      currentState = data.state;
+      originalState = [...currentState];
       renderPuzzle(currentState);
-      showStatus("Animation reset. You can Solve again.", "info");
+      showStatus("New puzzle loaded! Press ▶ Solve to run BFS.", "info");
+    } catch {
+      showStatus("Cannot reach Flask server. Is it running?", "error");
     }
+  }
 
-    // ========================================
-    // SOLVE WITH BFS
-    // ========================================
-    async function startSolve() {
-      if (isAnimating) return;
-      clearStats();
-      clearMoveLog();
-      showStatus("⏳ Sending to BFS solver...", "info");
+  // ═══════════════════════════════════
+  // RESET
+  // ═══════════════════════════════════
+  function resetPuzzle() {
+    stopAnimation();
+    currentState = [...originalState];
+    renderPuzzle(currentState);
+    showStatus("Reset to original state. You can Solve again.", "info");
+  }
 
-      document.getElementById("solveBtn").disabled = true;
+  // ═══════════════════════════════════
+  // SOLVE — send to Flask BFS
+  // ═══════════════════════════════════
+  async function startSolve() {
+    if (isAnimating) return;
+    clearAll();
+    showStatus("⏳ Running BFS on server...", "info");
+    document.getElementById("solveBtn").disabled = true;
+    currentState = [...originalState];  // reset board to start
 
-      try {
-        const res = await fetch("/solve", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ state: currentState })
-        });
+    try {
+      const res = await fetch("/solve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ state: currentState })
+      });
+      const data = await res.json();
 
-        const data = await res.json();
-
-        if (data.already_solved) {
-          showStatus("✅ Already solved!", "success");
-          document.getElementById("solveBtn").disabled = false;
-          return;
-        }
-
-        if (data.unsolvable) {
-          showStatus("❌ This puzzle has no solution! Try a different arrangement.", "error");
-          document.getElementById("solveBtn").disabled = false;
-          return;
-        }
-
-        if (data.success) {
-          document.getElementById("statMoves").textContent = data.total_moves;
-          document.getElementById("statSteps").textContent = data.steps_explored;
-
-          showStatus(
-            `BFS found the solution in <strong>${data.total_moves} moves</strong>! ` +
-            `Explored ${data.steps_explored} states. Animating...`,
-            "success"
-          );
-
-          solution = data.solution;
-          populateMoveLog(solution);
-          animateSolution(solution);
-        }
-
-      } catch (err) {
-        showStatus("Error connecting to server. Make sure Flask is running!", "error");
+      if (data.already_solved) {
+        showStatus("✅ Already at goal state!", "success");
         document.getElementById("solveBtn").disabled = false;
+        return;
       }
-    }
-
-    // ========================================
-    // ANIMATE SOLUTION STEP BY STEP
-    // ========================================
-    function animateSolution(steps) {
-      isAnimating = true;
-      let stepIndex = 0;
-
-      // Re-render puzzle from the START so we animate the full path
-      // The solution starts from the next state after current
-      function playStep() {
-        if (stepIndex >= steps.length) {
-          isAnimating = false;
-          document.getElementById("solveBtn").disabled = false;
-          showStatus("🎉 Solved! BFS guarantees this is the SHORTEST path.", "success");
-          celebrate();
-
-          // Highlight the active move log entry
-          highlightMoveLogEntry(stepIndex - 1);
-          return;
-        }
-
-        const { state, move } = steps[stepIndex];
-
-        // Find which tile MOVED (the one that changed from blank's old spot)
-        const blankWas = currentState.indexOf(0);
-        currentState = state;
-
-        // The tile that moved is now at blankWas position
-        renderPuzzle(currentState, blankWas);
-        highlightMoveLogEntry(stepIndex);
-
-        stepIndex++;
-        const delay = parseInt(document.getElementById("speedSlider").value);
-        animationTimer = setTimeout(playStep, delay);
+      if (data.unsolvable) {
+        showStatus("❌ This puzzle is unsolvable! Try a random one.", "error");
+        document.getElementById("solveBtn").disabled = false;
+        return;
       }
+      if (data.success) {
+        // Update stats
+        document.getElementById("statMoves").textContent   = data.total_moves;
+        document.getElementById("statSteps").textContent   = data.steps_explored;
+        document.getElementById("statVisited").textContent = data.total_visited;
 
-      playStep();
-    }
+        showStatus(
+          `✅ BFS solved it in <strong>${data.total_moves} moves</strong>! ` +
+          `Explored ${data.steps_explored} nodes. ` +
+          `${data.total_visited} total states visited.`,
+          "success"
+        );
 
-    function stopAnimation() {
-      if (animationTimer) clearTimeout(animationTimer);
-      isAnimating = false;
+        solution = data.solution;
+        allVisitedStates = data.visited_states;
+
+        // Build set of states on the solution path (for highlighting)
+        solutionStateSet = new Set(solution.map(s => s.state.join(",")));
+
+        populateMoveLog(solution);
+        renderVisitedStates(allVisitedStates);
+        animateSolution(solution);
+      }
+    } catch (err) {
+      showStatus("Error connecting to Flask server!", "error");
       document.getElementById("solveBtn").disabled = false;
     }
+  }
 
-    // ========================================
-    // MOVE LOG
-    // ========================================
-    function populateMoveLog(steps) {
-      const log = document.getElementById("moveLog");
-      log.innerHTML = "";
-      steps.forEach((step, i) => {
-        const entry = document.createElement("div");
-        entry.className = "move-entry";
-        entry.id = `log-entry-${i}`;
-        entry.innerHTML = `
-          <span class="move-num">#${i + 1}</span>
-          <span class="move-dir">Slide ${step.move}</span>
-        `;
-        log.appendChild(entry);
+  // ═══════════════════════════════════
+  // ANIMATE SOLUTION STEP BY STEP
+  // ═══════════════════════════════════
+  function animateSolution(steps) {
+    isAnimating = true;
+    currentState = [...originalState];
+    let stepIndex = 0;
+
+    function playStep() {
+      if (stepIndex >= steps.length) {
+        isAnimating = false;
+        document.getElementById("solveBtn").disabled = false;
+        showStatus("🎉 Solved! BFS guarantees the shortest path.", "success");
+        celebrate();
+        return;
+      }
+      const { state } = steps[stepIndex];
+      const blankWas = currentState.indexOf(0);
+      currentState = state;
+      renderPuzzle(currentState, blankWas);
+      highlightMoveLogEntry(stepIndex);
+      stepIndex++;
+      const delay = parseInt(document.getElementById("speedSlider").value);
+      animationTimer = setTimeout(playStep, delay);
+    }
+    playStep();
+  }
+
+  function stopAnimation() {
+    if (animationTimer) clearTimeout(animationTimer);
+    isAnimating = false;
+    document.getElementById("solveBtn").disabled = false;
+  }
+
+  // ═══════════════════════════════════
+  // MOVE LOG
+  // ═══════════════════════════════════
+  function populateMoveLog(steps) {
+    const log = document.getElementById("moveLog");
+    log.innerHTML = "";
+    // Show initial state
+    const initEntry = document.createElement("div");
+    initEntry.className = "move-entry";
+    initEntry.innerHTML = `<span class="move-num">#0</span><span class="move-dir" style="color:var(--accent)">Initial state</span>`;
+    log.appendChild(initEntry);
+
+    steps.forEach((step, i) => {
+      const entry = document.createElement("div");
+      entry.className = "move-entry";
+      entry.id = `log-entry-${i}`;
+      entry.innerHTML = `<span class="move-num">#${i+1}</span><span class="move-dir">Slide ${step.move}</span>`;
+      log.appendChild(entry);
+    });
+  }
+
+  function highlightMoveLogEntry(index) {
+    document.querySelectorAll(".move-entry").forEach(e => e.classList.remove("active"));
+    const active = document.getElementById(`log-entry-${index}`);
+    if (active) {
+      active.classList.add("active");
+      active.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }
+
+  // ═══════════════════════════════════
+  // VISITED STATES PANEL
+  // ═══════════════════════════════════
+  function renderVisitedStates(states, filter = "") {
+    const list = document.getElementById("visitedList");
+    list.innerHTML = "";
+
+    const initialKey = originalState.join(",");
+    const goalKey    = GOAL.join(",");
+
+    let shown = 0;
+    states.forEach((state, idx) => {
+      const key = state.join(",");
+      const label = state.join(" ");
+
+      if (filter && !label.includes(filter)) return;
+      if (shown >= 500) return; // cap for performance
+      shown++;
+
+      const isInitial  = key === initialKey;
+      const isGoal     = key === goalKey;
+      const isSolution = solutionStateSet.has(key);
+
+      const item = document.createElement("div");
+      item.className = "visited-item";
+      if (isGoal)     item.classList.add("is-goal");
+      else if (isInitial)  item.classList.add("is-initial");
+      else if (isSolution) item.classList.add("is-solution");
+
+      // Mini grid
+      const miniGrid = document.createElement("div");
+      miniGrid.className = "mini-grid";
+      state.forEach(num => {
+        const cell = document.createElement("div");
+        cell.className = "mini-cell";
+        if (num === 0) {
+          cell.classList.add("blank");
+        } else {
+          cell.textContent = num;
+          if (isGoal)          cell.classList.add("goal-cell");
+          else if (isSolution) cell.classList.add("solution-cell");
+        }
+        miniGrid.appendChild(cell);
       });
-    }
 
-    function highlightMoveLogEntry(index) {
-      document.querySelectorAll(".move-entry").forEach(e => e.style.color = "");
-      const active = document.getElementById(`log-entry-${index}`);
-      if (active) {
-        active.style.color = "var(--accent2)";
-        active.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      }
-    }
+      // Meta info
+      const meta = document.createElement("div");
+      meta.className = "visited-meta";
 
-    function clearMoveLog() {
-      document.getElementById("moveLog").innerHTML =
-        '<span style="color:var(--muted)">No solution yet...</span>';
-    }
+      const stateLabel = document.createElement("div");
+      stateLabel.className = "visited-state-label";
+      stateLabel.textContent = label;
 
-    // ========================================
-    // STATUS + STATS
-    // ========================================
-    function showStatus(msg, type) {
-      const el = document.getElementById("statusMsg");
-      el.className = `status-msg show ${type}`;
-      el.innerHTML = msg;
-    }
+      const tags = document.createElement("div");
+      tags.style.display = "flex";
+      tags.style.gap = "4px";
+      tags.style.flexWrap = "wrap";
+      tags.style.marginTop = "3px";
 
-    function clearStats() {
-      document.getElementById("statMoves").textContent = "—";
-      document.getElementById("statSteps").textContent = "—";
-    }
+      if (isInitial)  tags.innerHTML += `<span class="visited-tag tag-initial">Initial</span>`;
+      if (isSolution) tags.innerHTML += `<span class="visited-tag tag-solution">Solution path</span>`;
+      if (isGoal)     tags.innerHTML += `<span class="visited-tag tag-goal">Goal ✓</span>`;
 
-    // ========================================
-    // CELEBRATION CONFETTI
-    // ========================================
-    function celebrate() {
-      const colors = ["#7c6af7", "#f7c26a", "#6af7a0", "#f76a6a", "#6ac8f7"];
-      for (let i = 0; i < 40; i++) {
-        setTimeout(() => {
-          const p = document.createElement("div");
-          p.className = "confetti-particle";
-          p.style.left = Math.random() * 100 + "vw";
-          p.style.top = "-10px";
-          p.style.background = colors[Math.floor(Math.random() * colors.length)];
-          p.style.animationDuration = (1 + Math.random()) + "s";
-          document.body.appendChild(p);
-          setTimeout(() => p.remove(), 2500);
-        }, i * 40);
-      }
+      meta.appendChild(stateLabel);
+      meta.appendChild(tags);
+
+      const num = document.createElement("div");
+      num.className = "visited-num";
+      num.textContent = `#${idx+1}`;
+
+      item.appendChild(num);
+      item.appendChild(miniGrid);
+      item.appendChild(meta);
+      list.appendChild(item);
+    });
+
+    if (shown === 0) {
+      list.innerHTML = '<span style="color:var(--muted);font-size:0.72rem">No matching states found.</span>';
+    } else if (states.length > 500) {
+      const note = document.createElement("div");
+      note.style.cssText = "font-size:0.65rem;color:var(--muted);padding:8px;text-align:center";
+      note.textContent = `Showing first 500 of ${states.length} visited states.`;
+      list.appendChild(note);
     }
-  </script>
+  }
+
+  function filterVisited() {
+    const q = document.getElementById("visitedSearch").value.trim();
+    renderVisitedStates(allVisitedStates, q);
+  }
+
+  // ═══════════════════════════════════
+  // STATUS + HELPERS
+  // ═══════════════════════════════════
+  function showStatus(msg, type) {
+    const el = document.getElementById("statusMsg");
+    el.className = `status-msg show ${type}`;
+    el.innerHTML = msg;
+  }
+
+  function clearAll() {
+    document.getElementById("statMoves").textContent   = "—";
+    document.getElementById("statSteps").textContent   = "—";
+    document.getElementById("statVisited").textContent = "—";
+    document.getElementById("moveLog").innerHTML =
+      '<span style="color:var(--muted)">Press ▶ Solve to begin...</span>';
+    document.getElementById("visitedList").innerHTML =
+      '<span style="color:var(--muted);font-size:0.72rem">No visited states yet. Press ▶ Solve.</span>';
+    document.getElementById("visitedSearch").value = "";
+    solutionStateSet = new Set();
+    allVisitedStates = [];
+  }
+
+  // ═══════════════════════════════════
+  // CONFETTI
+  // ═══════════════════════════════════
+  function celebrate() {
+    const colors = ["#7c6af7","#f7c26a","#6af7a0","#f76a6a","#6ac8f7"];
+    for (let i = 0; i < 45; i++) {
+      setTimeout(() => {
+        const p = document.createElement("div");
+        p.className = "confetti-particle";
+        p.style.left = Math.random()*100 + "vw";
+        p.style.top = "-10px";
+        p.style.background = colors[Math.floor(Math.random()*colors.length)];
+        p.style.animationDuration = (1 + Math.random()) + "s";
+        document.body.appendChild(p);
+        setTimeout(() => p.remove(), 2500);
+      }, i * 35);
+    }
+  }
+</script>
 </body>
 </html>
