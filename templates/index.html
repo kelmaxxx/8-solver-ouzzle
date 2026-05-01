@@ -481,7 +481,7 @@
   <select class="algo-select" id="algoSelect" onchange="selectAlgo(this.value)">
     <option value="bfs">Breadth-First Search (BFS)</option>
     <option value="dfs">Depth-First Search (DFS)</option>
-    <option value="bestfirst" disabled>Best-First Search</option>
+    <option value="bestfirst">Best-First Search</option>
     <option value="astar" disabled>A* Search</option>
   </select>
 
@@ -625,9 +625,13 @@ const ALGOS = {
     label:    "Depth-First Search (DFS)",
     desc:     "Explores as deep as possible before backtracking. Does <em>not</em> guarantee the shortest path &mdash; solution may be long. Uninformed search &bull; Complete (with visited set) &bull; Not Optimal",
     endpoint: "/solve_dfs"
+  },
+  bestfirst: {
+    label:    "Best-First Search",
+    desc:     "Uses Manhattan distance heuristic h(n) to always expand the node closest to the goal. Informed search &bull; Faster than BFS/DFS &bull; Not guaranteed Optimal",
+    endpoint: "/solve_bestfirst"
   }
-  // bestfirst: { label: "Best-First Search", desc: "...", endpoint: "/solve_bestfirst" },
-  // astar:     { label: "A* Search",         desc: "...", endpoint: "/solve_astar"     },
+  // astar: { label: "A* Search", desc: "...", endpoint: "/solve_astar" },
 };
 
 let selectedAlgo = "bfs";

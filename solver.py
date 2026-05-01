@@ -1,4 +1,5 @@
 from collections import deque
+import heapq
 
 # The goal state of the 8-puzzle (0 = blank tile)
 GOAL_STATE = (1, 2, 3, 4, 5, 6, 7, 8, 0)
@@ -62,6 +63,90 @@ def is_solvable(state):
             if tiles[i] > tiles[j]:
                 inversions += 1
     return inversions % 2 == 0
+
+
+def manhattan_distance(state):
+    """
+    Heuristic: sum of Manhattan distances of each tile from its goal position.
+
+    For each tile (except blank), calculate how many rows + columns
+    away it is from where it should be in the goal state.
+    A lower value means the puzzle is closer to the goal.
+    """
+    distance = 0
+    for i, tile in enumerate(state):
+        if tile == 0:
+            continue                        # ignore the blank tile
+        goal_index = GOAL_STATE.index(tile) # where this tile should be
+        cur_row,  cur_col  = i // 3,          i % 3
+        goal_row, goal_col = goal_index // 3, goal_index % 3
+        distance += abs(cur_row - goal_row) + abs(cur_col - goal_col)
+    return distance
+
+
+def solve_best_first(start_state):
+    """
+    Solve the 8-puzzle using Greedy Best-First Search.
+
+    Uses Manhattan distance as the heuristic h(n).
+    Always expands the node that LOOKS closest to the goal (lowest h).
+    Informed search — much faster than BFS/DFS on average, but does
+    NOT guarantee the shortest path (greedy, not optimal).
+
+    Priority queue entry: (h(n), tie_breaker, state, path)
+
+    Returns:
+        - solution_path : list of {state, move} dicts for the solution
+        - steps_explored: total number of states popped/processed
+        - visited_states : ordered list of ALL states visited during search
+    """
+    start_state = tuple(start_state)
+
+    # Already solved?
+    if start_state == GOAL_STATE:
+        return [], 0, [start_state]
+
+    # Not solvable?
+    if not is_solvable(start_state):
+        return None, 0, []
+
+    h_start = manhattan_distance(start_state)
+
+    # Min-heap: (heuristic, counter, state, path)
+    # Counter breaks ties so Python never compares states directly
+    counter = 0
+    heap = [(h_start, counter, start_state, [])]
+
+    # visited set — prevents re-expanding states
+    visited = set()
+    visited.add(start_state)
+
+    # Ordered list of visited states (for display)
+    visited_order = [start_state]
+
+    steps_explored = 0
+
+    while heap:
+        h, _, current_state, path = heapq.heappop(heap)
+        steps_explored += 1
+
+        for next_state, direction in get_neighbors(current_state):
+            if next_state == GOAL_STATE:
+                visited_order.append(next_state)
+                solution_path = path + [{"state": list(next_state), "move": direction}]
+                return solution_path, steps_explored, visited_order
+
+            if next_state not in visited:
+                visited.add(next_state)
+                visited_order.append(next_state)
+                counter += 1
+                h_next = manhattan_distance(next_state)
+                heapq.heappush(heap, (
+                    h_next, counter, next_state,
+                    path + [{"state": list(next_state), "move": direction}]
+                ))
+
+    return None, steps_explored, visited_order
 
 
 def solve_dfs(start_state):
