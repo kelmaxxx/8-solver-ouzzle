@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
   <style>
+    /* ── DARK THEME (default) ── */
     :root {
       --bg:      #0d0d0f;
       --surface: #16161a;
@@ -19,6 +20,37 @@
       --ok:      #6af7a0;
       --err:     #f76a6a;
     }
+
+    /* ── LIGHT THEME ── */
+    [data-theme="light"] {
+      --bg:      #f0f0f5;
+      --surface: #ffffff;
+      --surf2:   #e8e8f2;
+      --border:  #c8c8dc;
+      --accent:  #6c5ce7;
+      --gold:    #c8860a;
+      --text:    #18182a;
+      --muted:   #7878a0;
+      --ok:      #1a9e5c;
+      --err:     #d63535;
+    }
+
+    /* ── SYSTEM THEME (auto light when OS is light) ── */
+    @media (prefers-color-scheme: light) {
+      [data-theme="system"] {
+        --bg:      #f0f0f5;
+        --surface: #ffffff;
+        --surf2:   #e8e8f2;
+        --border:  #c8c8dc;
+        --accent:  #6c5ce7;
+        --gold:    #c8860a;
+        --text:    #18182a;
+        --muted:   #7878a0;
+        --ok:      #1a9e5c;
+        --err:     #d63535;
+      }
+    }
+
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
@@ -26,10 +58,71 @@
       color: var(--text);
       font-family: 'Space Mono', monospace;
       min-height: 100vh;
-      padding: 24px 12px 60px;
+      padding: 72px 12px 60px; /* top padding accounts for fixed topbar */
       display: flex;
       flex-direction: column;
       align-items: center;
+    }
+
+    /* ── TOP BAR ── */
+    .topbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      z-index: 200;
+    }
+    .topbar-left  { display: flex; align-items: center; gap: 4px; }
+    .topbar-right { display: flex; align-items: center; gap: 8px; }
+
+    /* icon buttons in topbar */
+    .tb-btn {
+      width: 36px; height: 36px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 8px; border: 1px solid transparent;
+      background: transparent; color: var(--muted);
+      cursor: pointer; transition: all .13s; position: relative;
+    }
+    .tb-btn:hover { background: var(--surf2); border-color: var(--border); color: var(--text); }
+    .tb-btn svg { width: 18px; height: 18px; fill: currentColor; flex-shrink: 0; }
+
+    /* GitHub link */
+    .tb-github { text-decoration: none; }
+    .tb-github:hover { color: var(--text); }
+
+    /* ── THEME MENU ── */
+    .theme-wrap { position: relative; }
+    .theme-menu {
+      position: absolute;
+      top: calc(100% + 6px); left: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 6px;
+      min-width: 150px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.35);
+      display: none; flex-direction: column; gap: 2px;
+      z-index: 300;
+    }
+    .theme-menu.open { display: flex; }
+    .theme-opt {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 12px; border-radius: 7px;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.72rem; color: var(--muted);
+      cursor: pointer; border: none; background: transparent;
+      transition: all .12s; text-align: left; width: 100%;
+    }
+    .theme-opt:hover { background: var(--surf2); color: var(--text); }
+    .theme-opt.active { color: var(--accent); }
+    .theme-opt svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; flex-shrink: 0; }
+    .theme-sep {
+      height: 1px; background: var(--border); margin: 4px 0;
     }
 
     /* ── HEADER ── */
@@ -297,12 +390,83 @@
     .vtag-s { background: rgba(247,194,106,.2); color: var(--gold); }
     .vtag-g { background: rgba(106,247,160,.2); color: var(--ok); }
 
+    /* ── FOOTER ── */
+    .site-footer {
+      margin-top: 40px;
+      padding: 16px 0 8px;
+      font-size: 0.65rem;
+      color: var(--muted);
+      text-align: center;
+      letter-spacing: 0.4px;
+      border-top: 1px solid var(--border);
+      width: 100%;
+      max-width: 1080px;
+    }
+    .site-footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .site-footer a:hover { text-decoration: underline; }
+
     /* ── CONFETTI ── */
     .cp { position: fixed; width: 7px; height: 7px; border-radius: 50%; pointer-events: none; animation: fall 1.5s ease-in forwards; z-index: 999; }
     @keyframes fall { 0%{transform:translateY(-10px) rotate(0deg);opacity:1} 100%{transform:translateY(100vh) rotate(720deg);opacity:0} }
   </style>
 </head>
 <body>
+
+<!-- ══ TOP BAR ══ -->
+<nav class="topbar">
+
+  <!-- Left: empty spacer so content stays centered -->
+  <div class="topbar-left"></div>
+
+  <!-- Right: GitHub link then 3-dot theme menu -->
+  <div class="topbar-right">
+
+    <!-- GitHub link -->
+    <a class="tb-btn tb-github" href="https://github.com/kelmaxxx/8-solver-ouzzle" target="_blank" rel="noopener" title="View on GitHub">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577
+          0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7
+          3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236
+          1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93
+          0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23
+          .96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23
+          .645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92
+          .42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57
+          C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
+      </svg>
+    </a>
+
+    <!-- 3-dot theme menu (right of GitHub) -->
+    <div class="theme-wrap">
+      <button class="tb-btn" id="themeBtn" onclick="toggleThemeMenu()" title="Theme">
+        <svg viewBox="0 0 4 20" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="2" cy="2"  r="1.8"/>
+          <circle cx="2" cy="10" r="1.8"/>
+          <circle cx="2" cy="18" r="1.8"/>
+        </svg>
+      </button>
+      <div class="theme-menu" id="themeMenu">
+        <button class="theme-opt" onclick="setTheme('system')">
+          <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+          System
+        </button>
+        <button class="theme-opt" onclick="setTheme('dark')">
+          <svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          Dark
+        </button>
+        <button class="theme-opt" onclick="setTheme('light')">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          Light
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+</nav>
 
 <header>
   <h1>8-Puzzle Solver</h1>
@@ -411,7 +575,42 @@
   </div>
 </div>
 
+<footer class="site-footer">
+  Made by <a href="https://github.com/kelmaxxx" target="_blank" rel="noopener">Abdul Malik Gampong</a>
+  &bull; <a href="https://github.com/kelmaxxx/8-solver-ouzzle" target="_blank" rel="noopener">Source on GitHub</a>
+</footer>
+
 <script>
+// ═══════════════════════
+// THEME SWITCHER
+// ═══════════════════════
+(function() {
+  const saved = localStorage.getItem('theme') || 'system';
+  document.documentElement.setAttribute('data-theme', saved);
+})();
+
+function setTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  localStorage.setItem('theme', t);
+  document.querySelectorAll('.theme-opt').forEach(el => el.classList.remove('active'));
+  const map = { system: 0, dark: 1, light: 2 };
+  const opts = document.querySelectorAll('.theme-opt');
+  if (opts[map[t]]) opts[map[t]].classList.add('active');
+  closeThemeMenu();
+}
+
+function toggleThemeMenu() {
+  document.getElementById('themeMenu').classList.toggle('open');
+}
+
+function closeThemeMenu() {
+  document.getElementById('themeMenu').classList.remove('open');
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.theme-wrap')) closeThemeMenu();
+});
+
 // ═══════════════════════
 // ALGORITHM REGISTRY
 // When you add DFS/Best-First/A*, just add them here.
@@ -464,6 +663,11 @@ document.addEventListener("DOMContentLoaded", () => {
   sl.addEventListener("input", () =>
     document.getElementById("speedLabel").textContent = sl.value + "ms"
   );
+  // Mark active theme option
+  const saved = localStorage.getItem('theme') || 'system';
+  const map = { system: 0, dark: 1, light: 2 };
+  const opts = document.querySelectorAll('.theme-opt');
+  if (opts[map[saved]]) opts[map[saved]].classList.add('active');
 });
 
 // ═══════════════════════
