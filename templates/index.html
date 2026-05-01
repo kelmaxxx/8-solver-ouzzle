@@ -482,7 +482,7 @@
     <option value="bfs">Breadth-First Search (BFS)</option>
     <option value="dfs">Depth-First Search (DFS)</option>
     <option value="bestfirst">Best-First Search</option>
-    <option value="astar" disabled>A* Search</option>
+    <option value="astar">A* Search</option>
   </select>
 
   <!-- Info line that changes per algo -->
@@ -631,7 +631,12 @@ const ALGOS = {
     desc:     "Uses Manhattan distance heuristic h(n) to always expand the node closest to the goal. Informed search &bull; Faster than BFS/DFS &bull; Not guaranteed Optimal",
     endpoint: "/solve_bestfirst"
   }
-  // astar: { label: "A* Search", desc: "...", endpoint: "/solve_astar" },
+  ,
+  astar: {
+    label:    "A* Search",
+    desc:     "Uses f(n) = g(n) + h(n) — actual cost + Manhattan distance heuristic. Expands fewest nodes while guaranteeing the shortest path. Informed search &bull; Complete &bull; Optimal",
+    endpoint: "/solve_astar"
+  }
 };
 
 let selectedAlgo = "bfs";

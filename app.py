@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify
 import random
-from solver import solve_bfs, solve_dfs, solve_best_first, is_solvable, GOAL_STATE
+from solver import solve_bfs, solve_dfs, solve_best_first, solve_astar, is_solvable, GOAL_STATE
 
 app = Flask(__name__)
 
@@ -137,6 +137,46 @@ def solve_bestfirst_route():
         "visited_states": [list(s) for s in visited_states],
         "total_visited":  len(visited_states),
         "algorithm":      "Best-First Search"
+    })
+
+
+@app.route("/solve_astar", methods=["POST"])
+def solve_astar_route():
+    """
+    Receive the puzzle from the frontend, solve it with A* Search,
+    and return the solution steps + all visited states as JSON.
+    """
+    data = request.get_json()
+    start_state = data.get("state")
+
+    if not start_state or len(start_state) != 9:
+        return jsonify({"error": "Invalid puzzle state"}), 400
+
+    if sorted(start_state) != list(range(9)):
+        return jsonify({"error": "Puzzle must contain numbers 0-8"}), 400
+
+    # Already solved?
+    if tuple(start_state) == tuple(GOAL_STATE):
+        return jsonify({"already_solved": True, "steps": 0, "moves": 0})
+
+    # Not solvable?
+    if not is_solvable(start_state):
+        return jsonify({"unsolvable": True})
+
+    # Run A*
+    solution_path, steps_explored, visited_states = solve_astar(start_state)
+
+    if solution_path is None:
+        return jsonify({"unsolvable": True})
+
+    return jsonify({
+        "success":        True,
+        "solution":       solution_path,
+        "total_moves":    len(solution_path),      # Optimal path cost
+        "steps_explored": steps_explored,          # Nodes popped from priority queue
+        "visited_states": [list(s) for s in visited_states],
+        "total_visited":  len(visited_states),
+        "algorithm":      "A* Search"
     })
 
 

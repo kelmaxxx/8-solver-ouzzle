@@ -149,6 +149,79 @@ def solve_best_first(start_state):
     return None, steps_explored, visited_order
 
 
+def solve_astar(start_state):
+    """
+    Solve the 8-puzzle using A* Search.
+
+    A* combines:
+        g(n) = actual cost to reach node n from the start (number of moves so far)
+        h(n) = Manhattan distance heuristic (estimated cost to goal)
+        f(n) = g(n) + h(n)  ← priority used in the heap
+
+    Always expands the node with the lowest f(n).
+    Because Manhattan distance is ADMISSIBLE (never overestimates),
+    A* is guaranteed to find the SHORTEST solution — just like BFS
+    but much faster because the heuristic guides the search.
+
+    Priority queue entry: (f(n), tie_breaker, g(n), state, path)
+
+    Returns:
+        - solution_path : list of {state, move} dicts for the solution
+        - steps_explored: total number of states popped/processed
+        - visited_states : ordered list of ALL states visited during search
+    """
+    start_state = tuple(start_state)
+
+    # Already solved?
+    if start_state == GOAL_STATE:
+        return [], 0, [start_state]
+
+    # Not solvable?
+    if not is_solvable(start_state):
+        return None, 0, []
+
+    g_start = 0
+    h_start = manhattan_distance(start_state)
+    f_start = g_start + h_start
+
+    # Min-heap: (f, counter, g, state, path)
+    counter = 0
+    heap = [(f_start, counter, g_start, start_state, [])]
+
+    # visited set — once a state is expanded via the cheapest path, skip it
+    visited = set()
+    visited.add(start_state)
+
+    # Ordered list of visited states (for display)
+    visited_order = [start_state]
+
+    steps_explored = 0
+
+    while heap:
+        f, _, g, current_state, path = heapq.heappop(heap)
+        steps_explored += 1
+
+        for next_state, direction in get_neighbors(current_state):
+            if next_state == GOAL_STATE:
+                visited_order.append(next_state)
+                solution_path = path + [{"state": list(next_state), "move": direction}]
+                return solution_path, steps_explored, visited_order
+
+            if next_state not in visited:
+                visited.add(next_state)
+                visited_order.append(next_state)
+                g_next = g + 1                          # each move costs 1
+                h_next = manhattan_distance(next_state)
+                f_next = g_next + h_next
+                counter += 1
+                heapq.heappush(heap, (
+                    f_next, counter, g_next, next_state,
+                    path + [{"state": list(next_state), "move": direction}]
+                ))
+
+    return None, steps_explored, visited_order
+
+
 def solve_dfs(start_state):
     """
     Solve the 8-puzzle using Depth-First Search (DFS).
