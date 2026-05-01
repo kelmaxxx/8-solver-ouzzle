@@ -66,53 +66,29 @@
       letter-spacing: 0.8px;
       white-space: nowrap;
     }
-    .algo-pills {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-    .algo-pill {
+    /* Dropdown select */
+    .algo-select {
       font-family: 'Space Mono', monospace;
-      font-size: 0.72rem;
+      font-size: 0.75rem;
       font-weight: 700;
-      padding: 7px 16px;
+      padding: 8px 36px 8px 14px;
       border-radius: 8px;
-      border: 2px solid var(--border);
-      background: transparent;
-      color: var(--muted);
-      cursor: pointer;
-      transition: all .15s;
-      text-transform: uppercase;
-      letter-spacing: 0.4px;
-      position: relative;
-    }
-    .algo-pill:hover:not(.disabled) {
-      border-color: var(--accent);
-      color: var(--text);
-    }
-    .algo-pill.active {
-      background: var(--accent);
-      border-color: var(--accent);
-      color: #fff;
-    }
-    /* disabled = not yet unlocked */
-    .algo-pill.disabled {
-      opacity: 0.35;
-      cursor: not-allowed;
-    }
-    .algo-pill .soon {
-      position: absolute;
-      top: -7px; right: -4px;
-      font-size: 0.46rem;
+      border: 2px solid var(--accent);
       background: var(--surf2);
-      border: 1px solid var(--border);
-      color: var(--muted);
-      padding: 1px 4px;
-      border-radius: 4px;
-      text-transform: uppercase;
-      letter-spacing: 0.3px;
-      white-space: nowrap;
+      color: var(--text);
+      cursor: pointer;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%237c6af7' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      transition: border-color .15s, box-shadow .15s;
+      min-width: 200px;
     }
+    .algo-select:focus { box-shadow: 0 0 0 3px rgba(124,106,247,.25); }
+    .algo-select option { background: #16161a; color: var(--text); }
+    .algo-select option:disabled { color: var(--muted); }
     /* active algo info */
     .algo-info {
       font-size: 0.65rem;
@@ -205,6 +181,9 @@
     button.action.primary:disabled { opacity: .4; cursor: not-allowed; transform: none; }
     button.action.secondary { background: transparent; color: var(--text); border-color: var(--border); }
     button.action.secondary:hover { border-color: var(--accent); color: var(--accent); }
+    button.action.danger { background: transparent; color: var(--err); border-color: var(--err); display: none; }
+    button.action.danger:hover { background: rgba(247,106,106,.12); }
+    button.action.danger.visible { display: inline-flex; }
 
     /* ── SPEED ── */
     .speed-row { display: flex; align-items: center; gap: 8px; font-size: 0.68rem; color: var(--muted); width: 100%; }
@@ -333,32 +312,14 @@
 <!-- ══ ALGORITHM SELECTOR ══ -->
 <div class="algo-bar">
   <span class="algo-label">Algorithm:</span>
-  <div class="algo-pills">
 
-    <!-- MP1: BFS — AVAILABLE -->
-    <button class="algo-pill active" onclick="selectAlgo(this,'bfs')">
-      BFS
-    </button>
-
-    <!-- MP2: DFS — locked until you add it -->
-    <button class="algo-pill disabled" title="Coming in MP2">
-      DFS
-      <span class="soon">MP2</span>
-    </button>
-
-    <!-- MP3: Best-First — locked -->
-    <button class="algo-pill disabled" title="Coming in MP3">
-      Best-First
-      <span class="soon">MP3</span>
-    </button>
-
-    <!-- MP4: A* — locked -->
-    <button class="algo-pill disabled" title="Coming in MP4">
-      A*
-      <span class="soon">MP4</span>
-    </button>
-
-  </div>
+  <!-- Dropdown — remove "disabled" and add to ALGOS registry when MP2/3/4 are ready -->
+  <select class="algo-select" id="algoSelect" onchange="selectAlgo(this.value)">
+    <option value="bfs">MP1 — Breadth-First Search (BFS)</option>
+    <option value="dfs" disabled>MP2 — Depth-First Search (DFS)</option>
+    <option value="bestfirst" disabled>MP3 — Best-First Search</option>
+    <option value="astar" disabled>MP4 — A* Search</option>
+  </select>
 
   <!-- Info line that changes per algo -->
   <div class="algo-info" id="algoInfo">
@@ -383,6 +344,7 @@
 
     <div class="btn-row">
       <button class="action primary" id="solveBtn" onclick="startSolve()">&#9654; Solve</button>
+      <button class="action danger" id="stopBtn" onclick="userStop()">&#9632; Stop</button>
       <button class="action secondary" onclick="randomPuzzle()">&#8635; Random</button>
       <button class="action secondary" onclick="resetPuzzle()">&#8617; Reset</button>
     </div>
@@ -401,15 +363,15 @@
     <div class="card">
       <div class="stats-row">
         <div class="stat-box">
-          <div class="stat-label">Moves</div>
+          <div class="stat-label">Path Cost</div>
           <div class="stat-value" id="sMoves">&#8212;</div>
         </div>
         <div class="stat-box">
-          <div class="stat-label">Explored</div>
+          <div class="stat-label">Search Depth</div>
           <div class="stat-value" id="sExplored">&#8212;</div>
         </div>
         <div class="stat-box">
-          <div class="stat-label">Visited</div>
+          <div class="stat-label">Nodes Expanded</div>
           <div class="stat-value v2" id="sVisited">&#8212;</div>
         </div>
       </div>
@@ -467,10 +429,11 @@ const ALGOS = {
 
 let selectedAlgo = "bfs";
 
-function selectAlgo(btn, key) {
-  if (!ALGOS[key]) return; // locked
-  document.querySelectorAll(".algo-pill").forEach(p => p.classList.remove("active"));
-  btn.classList.add("active");
+function selectAlgo(key) {
+  if (!ALGOS[key]) {
+    document.getElementById("algoSelect").value = selectedAlgo;
+    return;
+  }
   selectedAlgo = key;
   const a = ALGOS[key];
   document.getElementById("algoInfo").innerHTML =
@@ -485,6 +448,7 @@ let curState  = [1,2,3,4,5,6,7,8,0];
 let origState = [...curState];
 let solution  = [], allVisited = [], solSet = new Set();
 let isAnim = false, animTimer = null;
+let fetchController = null; // AbortController for the solve request
 const GOAL = [1,2,3,4,5,6,7,8,0];
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -571,45 +535,58 @@ function resetPuzzle() {
 // ═══════════════════════
 // SOLVE
 // ═══════════════════════
+function setSolving(active) {
+  document.getElementById("solveBtn").disabled = active;
+  document.getElementById("stopBtn").classList.toggle("visible", active);
+}
+
 async function startSolve() {
   if (isAnim) return;
   clearAll(); curState = [...origState];
   const algo = ALGOS[selectedAlgo];
   showStatus("Running " + algo.label + "...", "info");
-  document.getElementById("solveBtn").disabled = true;
+  setSolving(true);
+
+  fetchController = new AbortController();
 
   try {
     const res = await fetch(algo.endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ state: curState, algorithm: selectedAlgo })
+      body: JSON.stringify({ state: curState, algorithm: selectedAlgo }),
+      signal: fetchController.signal
     });
     const d = await res.json();
 
     if (d.already_solved) {
       showStatus("Already at goal state!", "success");
-      document.getElementById("solveBtn").disabled = false; return;
+      setSolving(false); return;
     }
     if (d.unsolvable) {
       showStatus("No solution exists. Try a random puzzle.", "error");
-      document.getElementById("solveBtn").disabled = false; return;
+      setSolving(false); return;
     }
     if (d.success) {
       document.getElementById("sMoves").textContent    = d.total_moves;
       document.getElementById("sExplored").textContent = d.steps_explored.toLocaleString();
       document.getElementById("sVisited").textContent  = d.total_visited.toLocaleString();
       showStatus(
-        `<strong>${algo.label}</strong> solved it in <strong>${d.total_moves} moves</strong>. ` +
-        `Explored ${d.steps_explored.toLocaleString()} nodes &bull; Visited ${d.total_visited.toLocaleString()} states.`,
+        `<strong>${algo.label}</strong> — Path cost: <strong>${d.total_moves}</strong> &bull; ` +
+        `Search depth: ${d.steps_explored.toLocaleString()} &bull; ` +
+        `Nodes expanded: ${d.total_visited.toLocaleString()}`,
         "success"
       );
       solution = d.solution; allVisited = d.visited_states;
       solSet = new Set(solution.map(s => s.state.join(",")));
       populateMoveLog(solution); renderVisited(allVisited); animateSolution(solution);
     }
-  } catch {
-    showStatus("Error connecting to Flask server!", "error");
-    document.getElementById("solveBtn").disabled = false;
+  } catch(e) {
+    if (e.name === "AbortError") {
+      showStatus("Stopped by user.", "error");
+    } else {
+      showStatus("Error connecting to Flask server!", "error");
+    }
+    setSolving(false);
   }
 }
 
@@ -620,7 +597,8 @@ function animateSolution(steps) {
   isAnim = true; curState = [...origState]; let idx = 0;
   function next() {
     if (idx >= steps.length) {
-      isAnim = false; document.getElementById("solveBtn").disabled = false;
+      isAnim = false;
+      setSolving(false);
       showStatus("Solved! " + ALGOS[selectedAlgo].label + " found the path.", "success");
       celebrate(); return;
     }
@@ -633,7 +611,16 @@ function animateSolution(steps) {
 
 function stopAnim() {
   if (animTimer) clearTimeout(animTimer);
-  isAnim = false; document.getElementById("solveBtn").disabled = false;
+  isAnim = false;
+  setSolving(false);
+}
+
+function userStop() {
+  // Cancel fetch if still waiting on the server
+  if (fetchController) { fetchController.abort(); fetchController = null; }
+  // Stop animation if already playing
+  stopAnim();
+  showStatus("Stopped by user.", "error");
 }
 
 // ═══════════════════════
