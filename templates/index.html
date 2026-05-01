@@ -479,10 +479,10 @@
 
   <!-- Dropdown — remove "disabled" and add to ALGOS registry when MP2/3/4 are ready -->
   <select class="algo-select" id="algoSelect" onchange="selectAlgo(this.value)">
-    <option value="bfs">MP1 — Breadth-First Search (BFS)</option>
-    <option value="dfs" disabled>MP2 — Depth-First Search (DFS)</option>
-    <option value="bestfirst" disabled>MP3 — Best-First Search</option>
-    <option value="astar" disabled>MP4 — A* Search</option>
+    <option value="bfs">Breadth-First Search (BFS)</option>
+    <option value="dfs">Depth-First Search (DFS)</option>
+    <option value="bestfirst" disabled>Best-First Search</option>
+    <option value="astar" disabled>A* Search</option>
   </select>
 
   <!-- Info line that changes per algo -->
@@ -617,13 +617,17 @@ document.addEventListener('click', e => {
 // ═══════════════════════
 const ALGOS = {
   bfs: {
-    label: "Breadth-First Search (BFS)",
-    desc:  "Explores all states level by level. Guarantees the shortest solution path. Uninformed search &bull; Complete &amp; Optimal",
-    endpoint: "/solve" // Flask route to call
+    label:    "Breadth-First Search (BFS)",
+    desc:     "Explores all states level by level. Guarantees the shortest solution path. Uninformed search &bull; Complete &amp; Optimal",
+    endpoint: "/solve"
+  },
+  dfs: {
+    label:    "Depth-First Search (DFS)",
+    desc:     "Explores as deep as possible before backtracking. Does <em>not</em> guarantee the shortest path &mdash; solution may be long. Uninformed search &bull; Complete (with visited set) &bull; Not Optimal",
+    endpoint: "/solve_dfs"
   }
-  // dfs: { label: "Depth-First Search (DFS)", desc: "...", endpoint: "/solve_dfs" },
   // bestfirst: { label: "Best-First Search", desc: "...", endpoint: "/solve_bestfirst" },
-  // astar: { label: "A* Search", desc: "...", endpoint: "/solve_astar" },
+  // astar:     { label: "A* Search",         desc: "...", endpoint: "/solve_astar"     },
 };
 
 let selectedAlgo = "bfs";

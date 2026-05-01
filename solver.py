@@ -64,6 +64,60 @@ def is_solvable(state):
     return inversions % 2 == 0
 
 
+def solve_dfs(start_state):
+    """
+    Solve the 8-puzzle using Depth-First Search (DFS).
+
+    DFS explores as deep as possible along each branch before backtracking.
+    It does NOT guarantee the shortest solution — the path found can be
+    much longer than optimal. Uses a visited set to avoid infinite loops.
+
+    Returns:
+        - solution_path : list of {state, move} dicts for the solution
+        - steps_explored: total number of states popped/processed
+        - visited_states : ordered list of ALL states visited during search
+    """
+    start_state = tuple(start_state)
+
+    # Already solved?
+    if start_state == GOAL_STATE:
+        return [], 0, [start_state]
+
+    # Not solvable?
+    if not is_solvable(start_state):
+        return None, 0, []
+
+    # Stack holds: (current_state, path_taken_so_far)
+    # Using a list as a stack — append to push, pop() to pull from top
+    stack = [(start_state, [])]
+
+    # visited set — prevents revisiting states and infinite loops
+    visited = set()
+    visited.add(start_state)
+
+    # Ordered list of visited states (for display)
+    visited_order = [start_state]
+
+    steps_explored = 0
+
+    while stack:
+        current_state, path = stack.pop()   # pop from top (LIFO)
+        steps_explored += 1
+
+        for next_state, direction in get_neighbors(current_state):
+            if next_state == GOAL_STATE:
+                visited_order.append(next_state)
+                solution_path = path + [{"state": list(next_state), "move": direction}]
+                return solution_path, steps_explored, visited_order
+
+            if next_state not in visited:
+                visited.add(next_state)
+                visited_order.append(next_state)
+                stack.append((next_state, path + [{"state": list(next_state), "move": direction}]))
+
+    return None, steps_explored, visited_order
+
+
 def solve_bfs(start_state):
     """
     Solve the 8-puzzle using Breadth-First Search (BFS).
