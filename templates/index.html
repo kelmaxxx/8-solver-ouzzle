@@ -99,7 +99,7 @@
     .theme-wrap { position: relative; }
     .theme-menu {
       position: absolute;
-      top: calc(100% + 6px); left: 0;
+      top: calc(100% + 6px); right: 0;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 10px;
@@ -248,13 +248,13 @@
       height: clamp(200px, 38vw, 240px);
     }
     .tile {
-      background: #1e1e2e; border: 2px solid #3a3a55; border-radius: 10px;
+      background: var(--surf2); border: 2px solid var(--border); border-radius: 10px;
       display: flex; align-items: center; justify-content: center;
       font-family: 'Syne', sans-serif;
       font-size: clamp(1.3rem, 5vw, 1.8rem); font-weight: 800;
       cursor: pointer; transition: all .13s; user-select: none;
     }
-    .tile:hover:not(.blank) { background: #252535; border-color: var(--accent); transform: scale(1.05); }
+    .tile:hover:not(.blank) { background: var(--bg); border-color: var(--accent); transform: scale(1.05); }
     .tile.blank { background: transparent; border: 2px dashed var(--border); cursor: default; }
     .tile.animating { background: var(--accent); border-color: var(--accent); color: #fff; transform: scale(1.07); }
     .tile.goal { border-color: var(--ok); color: var(--ok); }
@@ -363,7 +363,7 @@
 
     .vs-item {
       display: flex; align-items: center; gap: 8px;
-      background: #1e1e30; border: 1px solid #2e2e4a;
+      background: var(--surf2); border: 1px solid var(--border);
       border-radius: 8px; padding: 7px 10px; transition: border-color .13s; min-width: 0;
     }
     .vs-item:hover { border-color: var(--accent); }
@@ -374,11 +374,11 @@
     .vs-num { font-size: 0.58rem; color: var(--muted); min-width: 26px; text-align: right; flex-shrink: 0; }
     .mini-board { display: grid; grid-template-columns: repeat(3,1fr); gap: 2px; width: 52px; height: 52px; flex-shrink: 0; }
     .mc {
-      background: #252535; border: 1px solid #3a3a50; border-radius: 2px;
+      background: var(--surf2); border: 1px solid var(--border); border-radius: 2px;
       display: flex; align-items: center; justify-content: center;
       font-family: 'Syne', sans-serif; font-size: 0.62rem; font-weight: 800; color: var(--text);
     }
-    .mc.bk { background: transparent; border-color: #2a2a3a; }
+    .mc.bk { background: transparent; border-color: var(--border); }
     .mc.sc { background: rgba(124,106,247,.2); color: var(--accent); }
     .mc.gc { background: rgba(106,247,160,.15); color: var(--ok); }
 
